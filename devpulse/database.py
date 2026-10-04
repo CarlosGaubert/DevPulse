@@ -9,12 +9,13 @@ from typing import Optional, List, Dict, Any, Tuple
 from devpulse.config import DB_PATH, TOPICS
 
 def get_connection() -> sqlite3.Connection:
-    """Return a connection with WAL mode and Row factory enabled."""
+    """Return a connection with WAL mode, capped 4MB cache, and Row factory enabled."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA synchronous = NORMAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA cache_size = -4000;")  # Limit SQLite cache to 4MB RAM
     return conn
 
 def init_db():

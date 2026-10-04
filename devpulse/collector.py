@@ -10,7 +10,7 @@ import feedparser
 from dateutil import parser as date_parser
 
 from devpulse.config import (
-    HN_MIN_POINTS, HN_LIMIT, GITHUB_REPOS, RSS_FEEDS, MAX_AGE_DAYS
+    HN_MIN_POINTS, HN_LIMIT, GITHUB_REPOS, RSS_FEEDS, MAX_AGE_DAYS, LOW_MEMORY_MODE
 )
 from devpulse.database import article_exists, save_article, get_custom_feeds
 from devpulse.classifier import get_classifier
@@ -25,8 +25,9 @@ HEADERS = {
 }
 
 class CollectorService:
-    def __init__(self, concurrency_limit: int = 6):
-        self.semaphore = asyncio.Semaphore(concurrency_limit)
+    def __init__(self, concurrency_limit: Optional[int] = None):
+        limit = concurrency_limit if concurrency_limit is not None else (2 if LOW_MEMORY_MODE else 6)
+        self.semaphore = asyncio.Semaphore(limit)
         self.classifier = get_classifier()
 
     def _is_recent(self, iso_date_str: str) -> bool:
@@ -275,8 +276,13 @@ class CollectorService:
             f"{skipped_irrelevant} filtered out."
         )
 
+        # Free memory immediately to prevent RSS accumulation on constrained cloud instances
+        import gc
+        del raw_articles
+        gc.collect()
+
         return {
-            "total_raw": len(raw_articles),
+            "total_raw": saved_count + skipped_duplicates + skipped_irrelevant + blocked_threats,
             "saved": saved_count,
             "skipped_duplicates": skipped_duplicates,
             "blocked_threats": blocked_threats,

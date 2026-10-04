@@ -9,7 +9,7 @@ import time
 import logging
 import re
 from typing import Dict, Any, Tuple
-from devpulse.config import TOPICS
+from devpulse.config import TOPICS, LOW_MEMORY_MODE
 
 logger = logging.getLogger("devpulse.classifier")
 
@@ -54,6 +54,12 @@ class LayaClassifier:
         self._init_laya()
 
     def _init_laya(self):
+        if LOW_MEMORY_MODE:
+            logger.info("⚡ Low-memory cloud mode active (Render 512MB ceiling). Using zero-footprint decision engine (<15MB RAM).")
+            self._router = None
+            self._initialized = False
+            return
+
         try:
             from laya import Router
             logger.info("Initializing Laya Router...")

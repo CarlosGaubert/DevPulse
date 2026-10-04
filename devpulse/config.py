@@ -14,6 +14,13 @@ DB_PATH = os.getenv("DEVPULSE_DB_PATH", str(DATA_DIR / "devpulse.sqlite3"))
 SYNC_INTERVAL_MINUTES = int(os.getenv("SYNC_INTERVAL_MINUTES", "15"))
 AUTO_SYNC_ON_STARTUP = os.getenv("AUTO_SYNC_ON_STARTUP", "true").lower() in ("true", "1", "yes")
 
+# Low-Memory Cloud Mode: Auto-detects Render free tier (512MB RAM) or explicit flag
+LOW_MEMORY_MODE = (
+    os.getenv("LOW_MEMORY_MODE", "").lower() in ("true", "1", "yes")
+    or os.getenv("RENDER") == "true"
+    or os.getenv("IS_RENDER") == "true"
+)
+
 # Recency Filter: Discard stale items older than MAX_AGE_DAYS
 MAX_AGE_DAYS = int(os.getenv("MAX_AGE_DAYS", "21"))
 

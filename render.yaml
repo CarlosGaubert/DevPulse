@@ -13,3 +13,8 @@ services:
         value: 15
       - key: DEVPULSE_DB_PATH
         value: data/devpulse.sqlite3
+      - key: LOW_MEMORY_MODE
+        value: "true"
+      - key: PYTHONMALLOC
+        value: "malloc"
+
