@@ -137,3 +137,28 @@ Para preservar la precisión técnica en las traducciones automáticas:
 - Enmascara nombres de lenguajes (`Rust`, `Go`, `Python`, `Swift`), frameworks (`React`, `Vue`, `Spring`) y versiones SemVer (`1.85.0`) con tokens neutros antes de traducir.
 - Evita traducciones ambiguas (ej. *Rust* nunca se traduce como *óxido*, *Go* nunca como *ir*, *Release* como *Versión/Lanzamiento* y no *liberación*).
 
+---
+
+## 🚀 Despliegue en la Nube 24/7 con GitHub Actions
+
+El repositorio incluye un pipeline de CI/CD automatizado en [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
+
+1. **🧪 CI (Integración Continua):** En cada `push` o `pull request` a la rama `main`, GitHub Actions configura Python 3.12, instala las dependencias y corre la suite de pruebas unitarias y de integración (`pytest`).
+2. **🚀 CD (Despliegue Continuo en Render / Cloud):** Si los tests pasan con éxito, dispara el webhook de despliegue configurado en `RENDER_DEPLOY_HOOK`.
+
+### Opción Rápida con Render (100% Gratuito):
+1. Inicia sesión en [render.com](https://render.com) con tu cuenta de GitHub.
+2. Haz clic en **New +** $\rightarrow$ **Blueprint** (o **Web Service**) y selecciona el repositorio `CarlosGaubert/DevPulse`.
+3. Render detectará automáticamente el archivo [`render.yaml`](render.yaml) y configurará el build y start commands sin necesidad de ingresar parámetros manuales.
+4. *(Opcional para Auto-deploy desde GitHub Actions)*: En los Settings de Render, copia la URL de **Deploy Hook** y agrégala en GitHub:
+   `Repo Settings` $\rightarrow$ `Secrets and variables` $\rightarrow$ `Actions` $\rightarrow$ `New repository secret`:
+   - Nombre: `RENDER_DEPLOY_HOOK`
+   - Valor: *Tu URL de Deploy Hook*
+
+### Despliegue con Docker:
+```bash
+docker build -t devpulse .
+docker run -d -p 8080:8080 --name devpulse-app devpulse
+```
+
+

@@ -1,0 +1,64 @@
+name: DevPulse CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 🧪 Automated Quality & Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Test Suite (Pipeline, Classifier & Security Shield)
+        run: |
+          pytest -v tests/test_pipeline.py
+
+  deploy:
+    name: 🚀 Deploy to Cloud (Render / Webhook)
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger Cloud Deployment Hook
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DEPLOY_HOOK" ]; then
+            echo "🚀 Triggering cloud deployment via webhook..."
+            response=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_HOOK")
+            http_code=$(echo "$response" | tail -n1)
+            echo "Response HTTP Code: $http_code"
+            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+              echo "✅ Despliegue en la nube iniciado exitosamente!"
+            else
+              echo "⚠️ Error al llamar el Webhook de despliegue (HTTP $http_code)"
+              exit 1
+            fi
+          else
+            echo "ℹ️ RENDER_DEPLOY_HOOK no está configurado en GitHub Secrets."
+            echo "👉 Para activar el auto-deploy al hacer git push:"
+            echo "   1. Crea un servicio gratuito en https://render.com conectando este repo."
+            echo "   2. Copia la 'Deploy Hook URL' desde la configuración de Render."
+            echo "   3. Agrégala en GitHub: Repo Settings -> Secrets and variables -> Actions -> 'RENDER_DEPLOY_HOOK'."
+          fi
