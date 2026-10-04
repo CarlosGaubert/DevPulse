@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPulse — El Radar Técnico &amp; Diario de Software</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1c1c20',
+                            900: '#18181b',
+                            950: '#121214',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    
+    <!-- Custom Editorial Stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="h-full bg-zinc-100/60 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col transition-colors duration-200" x-data="App()" x-init="init()">
+
+    <!-- 1. Top News Ticker with Autonomous Radar, Security & Language Ticker -->
+    <div class="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/90 text-xs text-zinc-600 dark:text-zinc-400 py-1.5 px-4 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 capitalize">
+                    <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span x-text="formattedDate"></span>
+                </span>
+                <span class="text-zinc-300 dark:text-zinc-700">&bull;</span>
+                <span class="hidden sm:inline" x-text="t('edition')"></span>
+                <span class="text-zinc-300 dark:text-zinc-700 hidden sm:inline">&bull;</span>
+                <!-- Antimalware Protection Indicator -->
+                <span class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <span x-text="t('shield_active')"></span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 font-mono text-[11px]">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-zinc-700 dark:text-zinc-300 font-semibold" x-text="t('radar_active')"></span>
+                    <span class="text-zinc-400 dark:text-zinc-500">| <span x-text="t('next_scan')"></span>: <strong class="text-zinc-800 dark:text-zinc-200" x-text="formatMinutesToNext(scheduler.next_run_at)"></strong></span>
+                </div>
+                <span class="text-zinc-300 dark:text-zinc-700 hidden md:inline">&bull;</span>
+                <span class="hidden md:inline font-mono text-[11px] text-zinc-500">
+                    <span x-text="stats.total_articles"></span> <span x-text="t('news_verified')"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Newspaper Masthead Header -->
+    <header class="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 masthead-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                
+                <!-- Publication Identity -->
+                <div>
+                    <div class="flex items-baseline gap-3">
+                        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-editorial text-zinc-950 dark:text-white">
+                            DevPulse
+                        </h1>
+                        <span class="text-xs uppercase tracking-widest font-mono font-bold px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                            Tech Wire
+                        </span>
+                    </div>
+                    <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 font-editorial italic mt-1" x-text="t('subtitle')">
+                    </p>
+                </div>
+
+                <!-- Global Controls: Language, Search, Sync, Bookmarks, Theme -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    
+                    <!-- Universal Multi-Language Dropdown -->
+                    <div class="relative" @click.away="langDropdownOpen = false">
+                        <button 
+                            @click="langDropdownOpen = !langDropdownOpen"
+                            class="px-3 py-2 text-xs font-bold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all flex items-center gap-1.5 shadow-sm"
+                            title="Seleccionar Idioma / Select Language"
+                        >
+                            <span class="text-base leading-none" x-text="getCurrentLangObj().flag"></span>
+                            <span class="uppercase tracking-wider font-mono font-bold" x-text="currentLang"></span>
+                            <svg class="w-3 h-3 text-zinc-400 transition-transform duration-150" :class="langDropdownOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <div 
+                            x-show="langDropdownOpen" 
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-44 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl py-1.5 z-50 text-xs font-sans-ui"
+                        >
+                            <template x-for="lang in availableLanguages" :key="lang.code">
+                                <button 
+                                    @click="setLanguage(lang.code)"
+                                    :class="currentLang === lang.code ? 'bg-zinc-100 dark:bg-zinc-800 font-bold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'"
+                                    class="w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <span class="text-base" x-text="lang.flag"></span>
+                                        <span x-text="lang.name"></span>
+                                    </span>
+                                    <span class="font-mono text-[10px] uppercase text-zinc-400" x-text="lang.code"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Feed Manager Button -->
+                    <button 
+                        @click="openFeedManager" 
+                        class="px-3 py-2 text-xs font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all flex items-center gap-1.5 shadow-sm"
+                        :title="t('feed_manager')"
+                    >
+                        <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1Z"/>
+                        </svg>
+                        <span class="hidden sm:inline" x-text="t('feed_manager')"></span>
+                        <span class="font-mono text-[11px] px-1 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200" x-text="customFeeds.length"></span>
+                    </button>
+
+                    <!-- Search Input -->
+                    <div class="relative w-full sm:w-60">
+                        <input 
+                            type="text" 
+                            x-model="searchQuery" 
+                            @input="onSearchInput"
+                            :placeholder="t('search_placeholder')"
+                            class="w-full pl-9 pr-7 py-2 text-sm bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 placeholder:text-zinc-400 transition-all font-sans-ui"
+                        >
+                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zinc-400">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                        <button 
+                            x-show="searchQuery" 
+                            @click="searchQuery = ''; onSearchInput();" 
+                            class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Bookmarks Filter Button -->
+                    <button 
+                        @click="toggleSavedOnly"
+                        :class="showSavedOnly ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700'"
+                        class="px-3 py-2 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1.5"
+                    >
+                        <svg class="w-4 h-4" :class="showSavedOnly ? 'fill-current' : 'fill-none'" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        <span class="hidden lg:inline" x-text="t('bookmarks')"></span>
+                        <span class="font-mono text-[11px] px-1 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200" x-text="savedArticleIds.length"></span>
+                    </button>
+
+                    <!-- Export Digest Dropdown Button -->
+                    <div class="relative" x-data="{ exportOpen: false }" @click.away="exportOpen = false">
+                        <button 
+                            @click="exportOpen = !exportOpen"
+                            class="px-3 py-2 text-xs font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all flex items-center gap-1.5 shadow-sm"
+                            :title="t('export_digest')"
+                        >
+                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            <span class="hidden sm:inline" x-text="t('export_digest')"></span>
+                            <svg class="w-2.5 h-2.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div 
+                            x-show="exportOpen" 
+                            x-transition
+                            class="absolute right-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl py-1.5 z-50 text-xs font-sans-ui"
+                        >
+                            <button 
+                                @click="exportDigest('markdown'); exportOpen = false;"
+                                class="w-full text-left px-3.5 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center gap-2"
+                            >
+                                <span class="font-mono font-bold text-zinc-400">MD</span>
+                                <span x-text="t('export_md')"></span>
+                            </button>
+                            <button 
+                                @click="exportDigest('json'); exportOpen = false;"
+                                class="w-full text-left px-3.5 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center gap-2"
+                            >
+                                <span class="font-mono font-bold text-zinc-400">JSON</span>
+                                <span x-text="t('export_json')"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Sync Button -->
+                    <button 
+                        @click="triggerRefresh" 
+                        :disabled="isSyncing || scheduler.is_syncing"
+                        class="px-3 py-2 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-all flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        <svg class="w-3.5 h-3.5" :class="(isSyncing || scheduler.is_syncing) ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span class="hidden sm:inline" x-text="(isSyncing || scheduler.is_syncing) ? t('syncing') : t('sync')"></span>
+                    </button>
+
+                    <!-- Theme Toggle (Grayscale Zinc Mode) -->
+                    <button 
+                        @click="toggleTheme" 
+                        class="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700/80 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                        title="Theme"
+                    >
+                        <svg x-show="!darkMode" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                        <svg x-show="darkMode" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- 3. Sections & Topic Tabs Bar -->
+    <nav class="sticky top-0 z-30 bg-white/95 dark:bg-zinc-900/95 border-b border-zinc-200 dark:border-zinc-800 glass-editorial">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between gap-4 py-2.5">
+                
+                <!-- Category Pills -->
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-1">
+                    <button 
+                        @click="setTopic('')"
+                        :class="selectedTopic === '' 
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' 
+                            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5"
+                    >
+                        <span x-text="t('all_topics')"></span>
+                        <span class="text-[11px] font-mono opacity-80" x-text="'(' + stats.total_articles + ')'"></span>
+                    </button>
+
+                    <template x-for="tItem in topics" :key="tItem.name">
+                        <button 
+                            @click="setTopic(tItem.name)"
+                            :class="selectedTopic === tItem.name 
+                                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' 
+                                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+                            class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5"
+                        >
+                            <span x-text="tItem.name"></span>
+                            <span class="text-[11px] font-mono opacity-80" x-text="'(' + tItem.count + ')'"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- View Mode Switcher -->
+                <div class="hidden md:flex items-center gap-1 border-l border-zinc-200 dark:border-zinc-800 pl-4 font-sans-ui">
+                    <button 
+                        @click="setViewMode('magazine')"
+                        :class="viewMode === 'magazine' ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'"
+                        class="p-1.5 rounded-md transition-colors"
+                        title="Magazine View"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                        </svg>
+                    </button>
+                    <button 
+                        @click="setViewMode('wire')"
+                        :class="viewMode === 'wire' ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'"
+                        class="p-1.5 rounded-md transition-colors"
+                        title="Wire / List View"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- 4. Main News Content Canvas -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Active Filter Indicator Bar -->
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+            <div class="flex items-center gap-3">
+                <span class="font-medium">
+                    <span x-text="t('showing')"></span> <strong class="text-zinc-900 dark:text-zinc-100 font-mono" x-text="articles.length"></strong> <span x-text="t('of')"></span> <span class="font-mono" x-text="totalArticles"></span> <span x-text="t('news')"></span>
+                </span>
+                <span x-show="selectedTopic || searchQuery || minScore || showSavedOnly" class="text-zinc-400">&bull;</span>
+                <button 
+                    x-show="selectedTopic || searchQuery || minScore || showSavedOnly" 
+                    @click="clearFilters" 
+                    class="text-xs font-semibold text-zinc-900 dark:text-zinc-100 underline hover:no-underline"
+                    x-text="t('reset_filters')"
+                >
+                </button>
+            </div>
+
+            <!-- Sort and Score Filter -->
+            <div class="flex items-center gap-3 text-xs">
+                <!-- Score Level Filter -->
+                <select 
+                    x-model="minScore" 
+                    @change="loadNews(true)"
+                    class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                    <option value="" x-text="t('all_impact')"></option>
+                    <option value="75" x-text="t('high_impact')"></option>
+                    <option value="50" x-text="t('moderate_impact')"></option>
+                </select>
+
+                <!-- Sort Criteria Selector -->
+                <div class="inline-flex rounded-lg p-0.5 bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
+                    <button 
+                        @click="setSort('importance')"
+                        :class="sortBy === 'importance' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm font-bold' : 'text-zinc-600 dark:text-zinc-400'"
+                        class="px-2.5 py-1 rounded-md transition-all"
+                        x-text="t('sort_impact')"
+                    >
+                    </button>
+                    <button 
+                        @click="setSort('date')"
+                        :class="sortBy === 'date' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm font-bold' : 'text-zinc-600 dark:text-zinc-400'"
+                        class="px-2.5 py-1 rounded-md transition-all"
+                        x-text="t('sort_recent')"
+                    >
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. LEAD STORY HERO SPOT (Top Recency & Impact Technology) -->
+        <template x-if="viewMode === 'magazine' && leadArticle">
+            <section class="mb-10 p-6 sm:p-8 rounded-2xl border lead-story-card relative overflow-hidden shadow-sm">
+                
+                <!-- Card Header -->
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-xs uppercase tracking-wider font-bold text-rose-600 dark:text-rose-400 font-mono flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            <span x-text="t('featured_cover')"></span>
+                        </span>
+                        <span class="text-zinc-400">&bull;</span>
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-sans-ui" x-text="leadArticle.source_name"></span>
+                        <span class="text-xs text-zinc-500" x-text="formatRelativeTime(leadArticle.published_at)"></span>
+                    </div>
+
+                    <!-- Security & Impact Badges -->
+                    <div class="flex items-center gap-2">
+                        <!-- Security Shield Badge -->
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium font-sans-ui" :class="getSafetyBadge(leadArticle.safety_status, leadArticle.safety_score).classes" :title="leadArticle.safety_details">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            <span class="hidden sm:inline" x-text="getSafetyBadge(leadArticle.safety_status, leadArticle.safety_score).label"></span>
+                            <span class="sm:hidden" x-text="getSafetyBadge(leadArticle.safety_status, leadArticle.safety_score).shortLabel"></span>
+                        </span>
+
+                        <!-- Laya Impact Score -->
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold" :class="getImpactBadge(leadArticle.importance_score).classes">
+                            <span x-text="leadArticle.importance_score"></span>/100
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Headline -->
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold font-editorial text-zinc-950 dark:text-white leading-tight tracking-tight mb-5 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer" @click="openReader(leadArticle)">
+                    <span x-text="leadArticle.title"></span>
+                </h2>
+
+                <!-- 💡 SECTION 1: DIÁLOGO EXPLICATIVO -->
+                <div class="mb-5 p-5 rounded-xl bg-amber-500/5 dark:bg-zinc-800/60 border border-amber-500/15 dark:border-zinc-700/60">
+                    <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                        </svg>
+                        <span x-text="t('dialogue_title')"></span>
+                    </div>
+                    <p class="text-base sm:text-[17px] text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans-ui" x-text="leadArticle.explanatory_dialogue"></p>
+                </div>
+
+                <!-- 📌 SECTION 2: IDEAS PRINCIPALES -->
+                <div class="bg-white dark:bg-zinc-900/90 rounded-xl p-5 border border-zinc-200/80 dark:border-zinc-800 mb-6">
+                    <div class="flex items-center justify-between mb-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-sans-ui flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            <span x-text="t('highlights_title')"></span>
+                        </span>
+                        <span class="text-xs font-mono text-zinc-500" x-text="'~' + (leadArticle.read_time_seconds || 15) + ' ' + t('reading_time')"></span>
+                    </div>
+                    
+                    <ul class="space-y-3">
+                        <template x-for="(bullet, bIndex) in leadArticle.summary_bullets" :key="bIndex">
+                            <li class="highlight-quote text-base sm:text-[17px] text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans-ui font-normal" x-text="bullet"></li>
+                        </template>
+                    </ul>
+                </div>
+
+                <!-- Footer Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold px-2.5 py-1 rounded-md border" :class="getTopicStyle(leadArticle.topic)" x-text="leadArticle.topic"></span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button 
+                            @click="toggleBookmark(leadArticle.id, $event)" 
+                            class="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                            <svg class="w-4 h-4" :class="isBookmarked(leadArticle.id) ? 'fill-current text-rose-500' : 'fill-none'" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                            </svg>
+                        </button>
+
+                        <button 
+                            @click="openReader(leadArticle)" 
+                            class="px-4 py-2 rounded-lg text-sm font-semibold bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 transition-colors"
+                            x-text="t('focus_reader')"
+                        >
+                        </button>
+
+                        <a 
+                            :href="leadArticle.source_url" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            class="px-4 py-2 rounded-lg text-sm font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-all inline-flex items-center gap-1.5 shadow-sm"
+                        >
+                            <span x-text="t('original_source')"></span>
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+            </section>
+        </template>
+
+        <!-- 6. EDITORIAL ARTICLES GRID / STREAM -->
+        <div 
+            :class="viewMode === 'magazine' ? 'grid grid-cols-1 md:grid-cols-2 gap-8' : 'flex flex-col space-y-4'"
+        >
+
+            <!-- Empty State -->
+            <div 
+                x-show="!isLoading && regularArticles.length === 0 && !leadArticle" 
+                class="col-span-full py-16 text-center rounded-2xl bg-white dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-800 p-8"
+            >
+                <div class="w-12 h-12 mx-auto rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 mb-3">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100 font-editorial" x-text="t('empty_title')"></h3>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-sm mx-auto" x-text="t('empty_desc')"></p>
+                <button 
+                    @click="triggerRefresh" 
+                    class="mt-4 px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    x-text="t('scan_now')"
+                >
+                </button>
+            </div>
+
+            <!-- REGULAR ARTICLE CARDS -->
+            <template x-for="item in (leadArticle ? regularArticles : articles)" :key="item.id">
+                
+                <!-- MAGAZINE VIEW CARD -->
+                <article 
+                    x-show="viewMode === 'magazine'" 
+                    class="flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-7 editorial-card justify-between"
+                >
+                    <div>
+                        <!-- Header: Source + Date + Security Shield + Impact -->
+                        <div class="flex items-center justify-between gap-3 mb-3.5">
+                            <div class="flex items-center gap-2 overflow-hidden text-xs">
+                                <span class="font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 truncate" x-text="item.source_name"></span>
+                                <span class="text-zinc-400">&bull;</span>
+                                <span class="text-zinc-500 whitespace-nowrap" x-text="formatRelativeTime(item.published_at)"></span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <!-- Security Shield Icon Pill -->
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md" :class="getSafetyBadge(item.safety_status, item.safety_score).classes" :title="item.safety_details">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                    </svg>
+                                    <span x-text="getSafetyBadge(item.safety_status, item.safety_score).shortLabel"></span>
+                                </span>
+
+                                <!-- Impact Pill -->
+                                <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-mono text-xs font-bold" :class="getImpactBadge(item.importance_score).classes">
+                                    <span x-text="item.importance_score"></span>
+                                    <span class="text-[10px] opacity-70">/100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Topic Tag -->
+                        <div class="mb-3">
+                            <span class="inline-block text-xs font-medium px-2 py-0.5 rounded border" :class="getTopicStyle(item.topic)" x-text="item.topic"></span>
+                        </div>
+
+                        <!-- Headline -->
+                        <h3 class="text-xl sm:text-2xl font-bold font-editorial text-zinc-950 dark:text-white leading-snug tracking-tight mb-3 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors cursor-pointer" @click="openReader(item)">
+                            <span x-text="item.title"></span>
+                        </h3>
+
+                        <!-- 💡 Diálogo Explicativo Snippet -->
+                        <div x-show="item.explanatory_dialogue" class="mb-4 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans-ui">
+                            <div class="flex items-center gap-1 font-semibold text-zinc-500 dark:text-zinc-400 text-[11px] uppercase tracking-wider mb-1">
+                                <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                </svg>
+                                <span>Por qué importa</span>
+                            </div>
+                            <p class="line-clamp-2" x-text="item.explanatory_dialogue"></p>
+                        </div>
+
+                        <!-- 📌 Key Highlights Box -->
+                        <div class="bg-zinc-50/80 dark:bg-zinc-950/60 rounded-xl p-4 border border-zinc-100 dark:border-zinc-800/80 mb-5">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-sans-ui">
+                                    <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span x-text="t('highlights_title')"></span>
+                                </span>
+                                <span class="text-[11px] font-mono text-zinc-500" x-text="'~' + (item.read_time_seconds || 15) + ' ' + t('reading_time')"></span>
+                            </div>
+                            
+                            <ul class="space-y-2">
+                                <template x-for="(bullet, bIndex) in item.summary_bullets" :key="bIndex">
+                                    <li class="highlight-quote text-sm sm:text-[15px] text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans-ui" x-text="bullet"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs">
+                        <button 
+                            @click="toggleBookmark(item.id, $event)" 
+                            class="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                        >
+                            <svg class="w-4 h-4" :class="isBookmarked(item.id) ? 'fill-current text-rose-500' : 'fill-none'" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                            </svg>
+                            <span x-text="isBookmarked(item.id) ? t('saved') : t('save')"></span>
+                        </button>
+
+                        <div class="flex items-center gap-3">
+                            <button 
+                                @click="openReader(item)" 
+                                class="font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                                x-text="t('read_in_15s')"
+                            >
+                            </button>
+                            <a 
+                                :href="item.source_url" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                class="font-bold text-zinc-900 dark:text-zinc-100 hover:underline inline-flex items-center gap-1 group"
+                            >
+                                <span x-text="t('original_source')"></span>
+                                <svg class="w-3.5 h-3.5 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+
+                </article>
+
+                <!-- WIRE COMPACT VIEW -->
+                <div 
+                    x-show="viewMode === 'wire'" 
+                    class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 editorial-card"
+                >
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 text-xs mb-1.5 flex-wrap">
+                            <span class="font-semibold text-zinc-600 dark:text-zinc-400" x-text="item.source_name"></span>
+                            <span class="text-zinc-400">&bull;</span>
+                            <span class="text-zinc-500" x-text="formatRelativeTime(item.published_at)"></span>
+                            <span class="text-zinc-400">&bull;</span>
+                            <span class="text-[11px] font-mono text-zinc-500" x-text="item.topic"></span>
+                            <span class="text-zinc-400">&bull;</span>
+                            <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                                <span x-text="t('verified')"></span>
+                            </span>
+                        </div>
+                        <h4 class="text-lg font-bold font-editorial text-zinc-950 dark:text-white leading-snug hover:underline cursor-pointer" @click="openReader(item)">
+                            <span x-text="item.title"></span>
+                        </h4>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="px-2.5 py-1 rounded font-mono text-xs font-bold" :class="getImpactBadge(item.importance_score).classes">
+                            <span x-text="item.importance_score"></span>/100
+                        </div>
+                        <button 
+                            @click="openReader(item)" 
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                            x-text="t('focus_reader')"
+                        >
+                        </button>
+                        <a 
+                            :href="item.source_url" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            class="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+            </template>
+
+        </div>
+
+        <!-- 7. Pagination Controls -->
+        <div x-show="totalPages > 1" class="mt-12 flex items-center justify-center gap-3 font-sans-ui">
+            <button 
+                @click="goToPage(page - 1)" 
+                :disabled="page <= 1"
+                class="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                x-text="t('prev_page')"
+            >
+            </button>
+
+            <span class="text-sm font-medium text-zinc-600 dark:text-zinc-400 px-3">
+                <span x-text="t('page')"></span> <strong class="text-zinc-950 dark:text-white font-mono" x-text="page"></strong> <span x-text="t('of')"></span> <span class="font-mono" x-text="totalPages"></span>
+            </span>
+
+            <button 
+                @click="goToPage(page + 1)" 
+                :disabled="page >= totalPages"
+                class="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                x-text="t('next_page')"
+            >
+            </button>
+        </div>
+
+    </main>
+
+    <!-- 8. MODAL FOCUS READER (Detail View with Explanatory Dialogue, Key Highlights & Malware Security Shield) -->
+    <div 
+        x-show="readingArticle" 
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm"
+        style="display: none;"
+    >
+        <div 
+            @click.away="closeReader()" 
+            class="w-full max-w-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-6 sm:p-8 overflow-y-auto max-h-[90vh] transition-all"
+        >
+            <!-- Header bar -->
+            <div class="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                <div class="flex items-center gap-2 text-xs flex-wrap">
+                    <span class="font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300" x-text="readingArticle ? readingArticle.source_name : ''"></span>
+                    <span class="text-zinc-400">&bull;</span>
+                    <span class="text-zinc-500" x-text="readingArticle ? formatRelativeTime(readingArticle.published_at) : ''"></span>
+                    <span class="text-zinc-400">&bull;</span>
+                    <span class="font-mono text-zinc-500" x-text="'~' + (readingArticle ? readingArticle.read_time_seconds : 15) + ' ' + t('reading_time')"></span>
+                </div>
+
+                <button 
+                    @click="closeReader()" 
+                    class="p-1 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    :title="t('close')"
+                >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Title in big serif typography -->
+            <h2 class="text-2xl sm:text-3xl font-extrabold font-editorial text-zinc-950 dark:text-white leading-tight mb-4" x-text="readingArticle ? readingArticle.title : ''"></h2>
+
+            <!-- Topic & Score & Security Badge -->
+            <div class="flex items-center gap-3 mb-6 flex-wrap">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded border" :class="readingArticle ? getTopicStyle(readingArticle.topic) : ''" x-text="readingArticle ? readingArticle.topic : ''"></span>
+                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded" :class="readingArticle ? getImpactBadge(readingArticle.importance_score).classes">
+                    Impact: <span x-text="readingArticle ? readingArticle.importance_score : 0"></span>/100
+                </span>
+                <span class="text-xs font-medium px-2 py-0.5 rounded flex items-center gap-1" :class="readingArticle ? getSafetyBadge(readingArticle.safety_status, readingArticle.safety_score).classes : ''">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <span x-text="readingArticle ? getSafetyBadge(readingArticle.safety_status, readingArticle.safety_score).label : ''"></span>
+                </span>
+            </div>
+
+            <!-- 💡 SECTION 1: DIÁLOGO EXPLICATIVO -->
+            <div class="bg-amber-500/5 dark:bg-zinc-800/60 rounded-xl p-5 border border-amber-500/15 dark:border-zinc-700/60 mb-5">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+                    <span x-text="t('dialogue_title')"></span>
+                </h4>
+                <p class="text-base sm:text-[17px] text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans-ui" x-text="readingArticle ? readingArticle.explanatory_dialogue : ''"></p>
+            </div>
+
+            <!-- 📌 SECTION 2: IDEAS PRINCIPALES -->
+            <div class="bg-zinc-50 dark:bg-zinc-950 rounded-xl p-5 border border-zinc-200/80 dark:border-zinc-800 mb-5">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span x-text="t('highlights_title')"></span>
+                </h4>
+                <ul class="space-y-3">
+                    <template x-for="(b, idx) in (readingArticle ? readingArticle.summary_bullets : [])" :key="idx">
+                        <li class="highlight-quote text-base sm:text-[16px] text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans-ui" x-text="b"></li>
+                    </template>
+                </ul>
+            </div>
+
+            <!-- 🛡️ SECTION 3: INFORME DE SEGURIDAD WEB & ANTIMALWARE -->
+            <div class="rounded-xl p-4 bg-emerald-500/5 dark:bg-zinc-800/40 border border-emerald-500/15 dark:border-zinc-700/50 mb-6 text-xs text-zinc-600 dark:text-zinc-400">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                        <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                        <span x-text="t('inspect_security')"></span>
+                    </span>
+                    <span class="font-mono text-emerald-700 dark:text-emerald-400 font-bold" x-text="t('score_label') + ': ' + (readingArticle ? readingArticle.safety_score : 98) + '/100'"></span>
+                </div>
+                <p x-text="readingArticle ? readingArticle.safety_details : 'Safe link.'"></p>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <button 
+                    @click="readingArticle && toggleBookmark(readingArticle.id, $event)" 
+                    class="text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                    <svg class="w-4 h-4" :class="(readingArticle && isBookmarked(readingArticle.id)) ? 'fill-current text-rose-500' : 'fill-none'" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                    </svg>
+                    <span x-text="(readingArticle && isBookmarked(readingArticle.id)) ? t('saved') : t('save')"></span>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <button 
+                        @click="closeReader()" 
+                        class="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        x-text="t('close')"
+                    >
+                    </button>
+                    <a 
+                        :href="readingArticle ? readingArticle.source_url : '#'" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        class="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 inline-flex items-center gap-1.5 shadow-sm"
+                    >
+                        <span x-text="t('original_source')"></span>
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 8.5. Feed Manager Modal (Custom Sources & System Feeds) -->
+    <div 
+        x-show="showFeedModal" 
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm"
+        @click.self="closeFeedManager()"
+        style="display: none;"
+    >
+        <div 
+            class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-7 relative font-sans-ui"
+            @click.stop
+        >
+            <!-- Close Button -->
+            <button 
+                @click="closeFeedManager()" 
+                class="absolute top-5 right-5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex items-center gap-3 mb-5">
+                <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1Z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold font-editorial text-zinc-950 dark:text-white" x-text="t('feed_manager')"></h3>
+                    <p class="text-xs text-zinc-500">Agrega cualquier feed RSS o Atom técnico. DevPulse lo procesará con el clasificador Laya.</p>
+                </div>
+            </div>
+
+            <!-- Notification Banner -->
+            <div 
+                x-show="feedMessage" 
+                :class="feedMessageType === 'success' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'"
+                class="p-3 rounded-lg border text-xs font-medium mb-4 flex items-center justify-between"
+            >
+                <span x-text="feedMessage"></span>
+                <button @click="feedMessage = ''" class="text-xs underline ml-2">Cerrar</button>
+            </div>
+
+            <!-- Add Feed Form -->
+            <div class="bg-zinc-50 dark:bg-zinc-850/60 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 mb-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-3" x-text="t('add_new_feed')"></h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-zinc-500 mb-1" x-text="t('feed_name')"></label>
+                        <input 
+                            type="text" 
+                            x-model="newFeedName" 
+                            :placeholder="t('feed_name')" 
+                            class="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-zinc-500 mb-1" x-text="t('feed_topic')"></label>
+                        <select 
+                            x-model="newFeedTopic"
+                            class="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                        >
+                            <option value="Herramientas de Desarrollo & CLI">Herramientas de Desarrollo &amp; CLI</option>
+                            <option value="Funciones de Lenguajes (JS, Python, Rust, etc.)">Funciones de Lenguajes</option>
+                            <option value="Modelos IA & Machine Learning">Modelos IA &amp; Machine Learning</option>
+                            <option value="Infraestructura & Cloud Native">Infraestructura &amp; Cloud</option>
+                            <option value="Seguridad & Vulnerabilidades">Seguridad &amp; Vulnerabilidades</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-[11px] font-semibold text-zinc-500 mb-1" x-text="t('feed_url')"></label>
+                    <input 
+                        type="url" 
+                        x-model="newFeedUrl" 
+                        placeholder="https://ejemplo.com/feed.xml" 
+                        class="w-full px-3 py-2 text-xs font-mono bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    >
+                </div>
+                <button 
+                    @click="addCustomFeed()" 
+                    :disabled="isAddingFeed"
+                    class="w-full py-2 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
+                >
+                    <svg x-show="isAddingFeed" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span x-text="isAddingFeed ? 'Validando con el servidor...' : t('btn_add_feed')"></span>
+                </button>
+            </div>
+
+            <!-- Custom Feeds List -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300" x-text="t('custom_sources')"></h4>
+                    <span class="text-[11px] font-mono text-zinc-400" x-text="customFeeds.length + ' configuradas'"></span>
+                </div>
+                
+                <template x-if="customFeeds.length === 0">
+                    <div class="p-4 text-center text-xs text-zinc-400 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl" x-text="t('no_custom_feeds')">
+                    </div>
+                </template>
+
+                <div class="space-y-2">
+                    <template x-for="feed in customFeeds" :key="feed.id">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60 text-xs">
+                            <div class="min-w-0 pr-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-zinc-900 dark:text-white truncate" x-text="feed.name"></span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300" x-text="feed.topic"></span>
+                                </div>
+                                <span class="font-mono text-[10px] text-zinc-400 truncate block mt-0.5" x-text="feed.url"></span>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <button 
+                                    @click="toggleFeedActive(feed)" 
+                                    :class="feed.is_active ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 border-transparent'"
+                                    class="text-[10px] font-bold px-2 py-1 rounded border transition-colors"
+                                    x-text="feed.is_active ? t('active') : t('paused')"
+                                >
+                                </button>
+                                <button 
+                                    @click="deleteFeed(feed.id)" 
+                                    class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 p-1 hover:bg-rose-500/10 rounded transition-colors"
+                                    title="Eliminar feed"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- System Sources (Curated) -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2" x-text="t('system_sources')"></h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
+                        <div>
+                            <span class="font-semibold text-zinc-800 dark:text-zinc-200">Hacker News</span>
+                            <span class="text-[10px] text-zinc-400 block font-mono">Algolia Live API</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">Activo</span>
+                    </div>
+                    <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
+                        <div>
+                            <span class="font-semibold text-zinc-800 dark:text-zinc-200">GitHub Releases</span>
+                            <span class="text-[10px] text-zinc-400 block font-mono">8 Core Repos</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">Activo</span>
+                    </div>
+                    <template x-for="(sfeed, sidx) in systemFeeds" :key="sidx">
+                        <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
+                            <div class="min-w-0 pr-2">
+                                <span class="font-semibold text-zinc-800 dark:text-zinc-200 truncate block" x-text="sfeed.name"></span>
+                                <span class="text-[10px] text-zinc-400 block font-mono truncate" x-text="sfeed.topic"></span>
+                            </div>
+                            <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold flex-shrink-0">Activo</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Footer Close -->
+            <div class="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                <button 
+                    @click="closeFeedManager()" 
+                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    x-text="t('close')"
+                >
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. Editorial Newspaper Footer -->
+    <footer class="mt-auto border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-8 text-xs text-zinc-500 font-sans-ui">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-6 mb-4">
+                <div class="flex items-baseline gap-2">
+                    <span class="font-editorial font-bold text-lg text-zinc-950 dark:text-white">DevPulse</span>
+                    <span class="text-zinc-400">&bull;</span>
+                    <span x-text="t('footer_credit')"></span>
+                </div>
+                <div class="flex items-center gap-6 text-zinc-600 dark:text-zinc-400 flex-wrap">
+                    <span>Motor Laya: <strong class="text-zinc-900 dark:text-zinc-200 font-mono">&lt;40ms</strong></span>
+                    <span>Escudo Antimalware: <strong class="text-emerald-600 dark:text-emerald-400 font-mono">Activo</strong></span>
+                    <span>Traductor Universal: <strong class="text-zinc-900 dark:text-zinc-200 font-mono" x-text="currentLang.toUpperCase()"></strong></span>
+                </div>
+            </div>
+            <div class="text-center sm:text-left text-zinc-400 text-[11px] flex flex-col sm:flex-row justify-between items-center gap-2">
+                <p>Fuentes: Algolia Hacker News &bull; GitHub Releases &bull; Curated Engineering RSS.</p>
+                <p>Inspección de seguridad HTTPS y traducción con caché en tiempo real.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Application Script -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

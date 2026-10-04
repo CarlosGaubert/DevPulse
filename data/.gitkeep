@@ -1,0 +1,1 @@
+# Ensure data directory exists for SQLite WAL storage

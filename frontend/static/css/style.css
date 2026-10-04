@@ -1,0 +1,134 @@
+/* DevPulse Editorial News Theme - Typography & Grayscale Dark Mode */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --font-serif: 'Newsreader', Georgia, Cambria, 'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-editorial {
+  font-family: var(--font-serif);
+}
+
+.font-sans-ui {
+  font-family: var(--font-sans);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Grayscale Dark Mode Custom Theme (Zinc / Neutral Grays - No harsh blacks or neon blues) */
+html.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #121214; /* Deep warm charcoal gray */
+  color: #f4f4f5; /* Clean light gray */
+}
+
+/* Card surfaces */
+.editorial-card {
+  background-color: #ffffff;
+  border-color: #e4e4e7;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .editorial-card {
+  background-color: #18181b; /* Zinc 900 */
+  border-color: #27272a;     /* Zinc 800 */
+}
+
+.editorial-card:hover {
+  border-color: #d4d4d8;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+}
+
+.dark .editorial-card:hover {
+  border-color: #3f3f46;     /* Zinc 700 */
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Lead Hero Feature Card */
+.lead-story-card {
+  background-color: #fafafa;
+  border-color: #e4e4e7;
+}
+
+.dark .lead-story-card {
+  background-color: #1c1c20;
+  border-color: #2e2e34;
+}
+
+/* Glass Panels with Neutral Grays */
+.glass-editorial {
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dark .glass-editorial {
+  background-color: rgba(18, 18, 20, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Newspaper Masthead rule */
+.masthead-border {
+  border-bottom: 3px double #d4d4d8;
+}
+.dark .masthead-border {
+  border-bottom: 3px double #27272a;
+}
+
+/* Custom Scrollbars in Zinc Grays */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Highlight bullet styling */
+.highlight-quote {
+  position: relative;
+  padding-left: 1.25rem;
+}
+.highlight-quote::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 3px;
+  border-radius: 9999px;
+  background-color: #10b981;
+}
+
+.dark .highlight-quote::before {
+  background-color: #34d399;
+}
