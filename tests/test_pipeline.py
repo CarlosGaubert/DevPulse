@@ -203,4 +203,33 @@ def test_technical_terminology_shield():
     go_trans = translate_text(go_text, target_lang="es")
     assert "Go" in go_trans
 
+@pytest.mark.anyio
+async def test_translate_articles_batch_async():
+    from devpulse.translator import translate_articles_batch_async
+
+    sample_articles = [
+        {
+            "id": 101,
+            "title": "Rust 1.85.0 Testing Release",
+            "explanatory_dialogue": "Actualización clave en el compilador de Rust.",
+            "summary_bullets": ["Rust 1.85 features async closures"],
+            "topic": "Funciones de Lenguajes (JS, Python, Rust, etc.)"
+        },
+        {
+            "id": 102,
+            "title": "React 19 Server Components Architecture",
+            "explanatory_dialogue": "Nueva arquitectura de componentes en React 19.",
+            "summary_bullets": ["React Server Actions improved"],
+            "topic": "Frameworks Web (React, Vue, etc.)"
+        }
+    ]
+
+    # Test Spanish batch translation
+    translated = await translate_articles_batch_async(sample_articles, target_lang="es")
+    assert len(translated) == 2
+    assert translated[0]["lang"] == "es"
+    assert "Rust" in translated[0]["title"]
+    assert "React" in translated[1]["title"]
+
+
 

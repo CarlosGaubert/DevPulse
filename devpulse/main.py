@@ -21,7 +21,8 @@ from devpulse.database import (
 )
 from devpulse.scheduler import scheduler
 from devpulse.translator import (
-    init_translation_cache, translate_text, translate_article_payload,
+    init_translation_cache, translate_text, translate_text_async,
+    translate_article_payload, translate_articles_batch_async,
     SUPPORTED_LANGUAGES, normalize_lang_code
 )
 
@@ -106,10 +107,10 @@ async def list_news(
         page_size=page_size
     )
 
-    # Automatic translation for requested language
+    # Automatic translation for requested language with parallel async batching
     target_code = normalize_lang_code(lang)
     if target_code != "en" or any(a.get("explanatory_dialogue") for a in articles):
-        articles = [translate_article_payload(a, target_lang=target_code) for a in articles]
+        articles = await translate_articles_batch_async(articles, target_lang=target_code)
 
     total_pages = max(1, math.ceil(total / page_size))
     return {
@@ -126,7 +127,7 @@ async def list_news(
 @app.post("/api/translate")
 async def handle_translate(req: TranslationRequest):
     """Traduce cualquier texto técnico a cualquiera de los idiomas soportados con caché de alto rendimiento."""
-    translated = translate_text(req.text, target_lang=req.target)
+    translated = await translate_text_async(req.text, target_lang=req.target)
     return {"original": req.text, "translated": translated, "target": req.target}
 
 @app.get("/api/topics")
