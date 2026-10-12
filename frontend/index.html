@@ -735,6 +735,7 @@
         class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm"
         style="display: none;"
     >
+        <template x-if="readingArticle">
         <div 
             @click.away="closeReader()" 
             class="w-full max-w-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-6 sm:p-8 overflow-y-auto max-h-[90vh] transition-all"
@@ -766,7 +767,7 @@
             <!-- Topic & Score & Security Badge -->
             <div class="flex items-center gap-3 mb-6 flex-wrap">
                 <span class="text-xs font-semibold px-2.5 py-1 rounded border" :class="readingArticle ? getTopicStyle(readingArticle.topic) : ''" x-text="readingArticle ? readingArticle.topic : ''"></span>
-                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded" :class="readingArticle ? getImpactBadge(readingArticle.importance_score).classes">
+                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded" :class="readingArticle ? getImpactBadge(readingArticle.importance_score).classes : ''">
                     Impact: <span x-text="readingArticle ? readingArticle.importance_score : 0"></span>/100
                 </span>
                 <span class="text-xs font-medium px-2 py-0.5 rounded flex items-center gap-1" :class="readingArticle ? getSafetyBadge(readingArticle.safety_status, readingArticle.safety_score).classes : ''">
@@ -851,6 +852,7 @@
             </div>
 
         </div>
+        </template>
     </div>
 
     <!-- 8.5. Feed Manager Modal (Custom Sources & System Feeds) -->
