@@ -141,11 +141,12 @@ def init_translation_cache():
             conn.execute("CREATE INDEX IF NOT EXISTS idx_trans_hash ON translations_cache(source_hash);")
             conn.execute("""
                 DELETE FROM translations_cache 
-                WHERE translated_text LIKE '%óxido%' 
+                WHERE (translated_text LIKE '%óxido%' 
                    OR translated_text LIKE '%oxido%'
                    OR translated_text LIKE '%ferrugem%'
                    OR translated_text LIKE '%rouille%'
-                   OR translated_text LIKE '%Liberación de prueba%';
+                   OR translated_text LIKE '%Liberación de prueba%')
+                   OR (source_text = translated_text AND target_lang != 'en' AND LENGTH(source_text) > 12);
             """)
             conn.commit()
     except Exception as e:
@@ -177,6 +178,9 @@ def get_cached_translation(text: str, target_lang: str) -> Optional[str]:
 
 def set_cached_translation(text: str, target_lang: str, translated: str):
     if not text or not translated:
+        return
+    # If translation failed and simply echoed English text for non-English target, do not cache!
+    if target_lang != "en" and text.strip().lower() == translated.strip().lower() and len(text.strip()) > 10:
         return
     key = get_cache_key(text, target_lang)
     _MEM_CACHE[key] = translated
@@ -366,7 +370,10 @@ def translate_article_payload(article: Dict[str, Any], target_lang: str = "es") 
     translated_bullets = []
     for b in bullets:
         if target_code == "es":
-            translated_bullets.append(b)
+            if re.search(r'\b(the|and|with|for|from|this|that|which|allows|using|between|were|have|been|implemented|namely|example|average)\b', b, re.IGNORECASE):
+                translated_bullets.append(translate_text(b, target_lang="es", source_lang="en"))
+            else:
+                translated_bullets.append(b)
         else:
             translated_bullets.append(translate_text(b, target_lang=target_code, source_lang="auto"))
 
@@ -411,11 +418,14 @@ async def translate_articles_batch_async(articles: List[Dict[str, Any]], target_
             tasks.append(sem_translate(orig_dialogue, "es"))
 
         # 3. Bullets
-        if target_code != "es":
-            bullets = art.get("summary_bullets", [])
-            for b_idx, b in enumerate(bullets):
+        bullets = art.get("summary_bullets", [])
+        for b_idx, b in enumerate(bullets):
+            if target_code != "es":
                 task_keys.append((idx, "bullet", b_idx))
                 tasks.append(sem_translate(b, "auto"))
+            elif re.search(r'\b(the|and|with|for|from|this|that|which|allows|using|between|were|have|been|implemented|namely|example|average)\b', b, re.IGNORECASE):
+                task_keys.append((idx, "bullet", b_idx))
+                tasks.append(sem_translate(b, "en"))
 
     # Execute all translation tasks in parallel
     if tasks:
@@ -428,8 +438,7 @@ async def translate_articles_batch_async(articles: List[Dict[str, Any]], target_
     for art in translated_articles:
         art["is_translated"] = (target_code != "es")
         art["lang"] = target_code
-        if target_code != "es":
-            art["summary_bullets"] = list(art.get("summary_bullets", []))
+        art["summary_bullets"] = list(art.get("summary_bullets", []))
 
     for (a_idx, field, b_idx), res in zip(task_keys, results):
         if isinstance(res, Exception) or not res:

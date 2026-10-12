@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 import httpx
 import feedparser
+from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 
 from devpulse.config import (
@@ -68,15 +69,27 @@ class CollectorService:
                     if not self._is_recent(created_at):
                         continue
 
-                    points = hit.get("points", 0)
-                    comments = hit.get("num_comments", 0)
+                    story_text = hit.get("story_text") or ""
+                    content = story_text.strip() if story_text else ""
+
+                    # If external article and content is empty, attempt fast OpenGraph summary grab
+                    if not content and story_url.startswith("http"):
+                        try:
+                            meta_resp = await client.get(story_url, timeout=2.5)
+                            if meta_resp.status_code == 200 and "text/html" in meta_resp.headers.get("content-type", ""):
+                                soup = BeautifulSoup(meta_resp.text[:12000], "html.parser")
+                                meta_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "description"})
+                                if meta_desc and meta_desc.get("content"):
+                                    content = meta_desc["content"].strip()[:1000]
+                        except Exception:
+                            pass
 
                     stories.append({
                         "title": title.strip(),
                         "source_name": "Hacker News",
                         "source_url": story_url.strip(),
                         "published_at": created_at,
-                        "content": f"Puntos en Hacker News: {points} | Comentarios: {comments}",
+                        "content": content,
                     })
             except Exception as e:
                 logger.error(f"Error fetching Hacker News from {url}: {e}")

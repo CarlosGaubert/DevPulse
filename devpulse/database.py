@@ -62,6 +62,21 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_created ON articles(created_at DESC);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_safety ON articles(safety_status);")
 
+        # Clean any old legacy boilerplate entries if present
+        cursor.execute("SELECT COUNT(*) FROM articles WHERE summary_bullets LIKE '%Puntos en Hacker News%';")
+        legacy_count = cursor.fetchone()[0]
+        if legacy_count > 0:
+            from devpulse.summarizer import process_news_detail
+            cursor.execute("SELECT id, title, raw_content, topic FROM articles WHERE summary_bullets LIKE '%Puntos en Hacker News%';")
+            for r in cursor.fetchall():
+                det = process_news_detail(r["title"], r["raw_content"] or "", r["topic"] or "")
+                cursor.execute("""
+                    UPDATE articles 
+                    SET explanatory_dialogue = ?, summary_bullets = ?, read_time_seconds = ? 
+                    WHERE id = ?;
+                """, (det["explanatory_dialogue"], json.dumps(det["summary_bullets"], ensure_ascii=False), det["read_time_seconds"], r["id"]))
+            conn.commit()
+
         # Custom RSS / Atom feeds table
         conn.execute("""
             CREATE TABLE IF NOT EXISTS custom_feeds (
@@ -325,4 +340,17 @@ def toggle_custom_feed(feed_id: int, is_active: bool) -> bool:
         cursor.execute("UPDATE custom_feeds SET is_active = ? WHERE id = ?;", (1 if is_active else 0, feed_id))
         conn.commit()
         return cursor.rowcount > 0
+
+def update_article_synthesis(article_id: int, explanatory_dialogue: str, summary_bullets: List[str], read_time_seconds: int = 15) -> bool:
+    """Update synthesized dialogue, bullet points, and reading time for an existing article."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE articles
+            SET explanatory_dialogue = ?, summary_bullets = ?, read_time_seconds = ?
+            WHERE id = ?;
+        """, (explanatory_dialogue, json.dumps(summary_bullets, ensure_ascii=False), read_time_seconds, article_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
 
