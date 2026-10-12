@@ -213,16 +213,24 @@ _HTTP_HEADERS = {
     "Accept": "*/*",
 }
 
+_CIRCUIT_BLOCKED_UNTIL = 0.0
+
 async def _fetch_translation_remote(masked_text: str, target_code: str, source_lang: str = "auto") -> Optional[str]:
     """
-    Direct multi-tier translation request:
-    1. Google Translate via dict-chrome-ex client (highly reliable, no datacenter blocks)
-    2. Google Translate via webapp client
-    3. MyMemory API with 2-letter language codes
+    Direct multi-tier translation request with Circuit Breaker:
+    If upstream services return 429 Too Many Requests (datacenter rate limit),
+    circuit breaker trips for 5 minutes so requests return immediately without blocking.
     """
+    global _CIRCUIT_BLOCKED_UNTIL
+    import time
+    now = time.time()
+    if now < _CIRCUIT_BLOCKED_UNTIL:
+        # Circuit is open (cooling down), do not hammer external APIs
+        return None
+
     src = source_lang if source_lang != "auto" else "auto"
 
-    async with httpx.AsyncClient(headers=_HTTP_HEADERS, timeout=3.0, follow_redirects=True) as client:
+    async with httpx.AsyncClient(headers=_HTTP_HEADERS, timeout=2.0, follow_redirects=True) as client:
         # Tier 1: Google dict-chrome-ex
         try:
             url = f"https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl={src}&tl={target_code}&dt=t&q=" + urllib.parse.quote(masked_text)
@@ -233,6 +241,11 @@ async def _fetch_translation_remote(masked_text: str, target_code: str, source_l
                     result = "".join(s[0] for s in data[0] if s and isinstance(s, list) and s[0])
                     if result:
                         return result
+            elif resp.status_code == 429 or "sorry/index" in str(resp.url):
+                # Datacenter IP blocked by Google, trip circuit breaker for 300 seconds
+                _CIRCUIT_BLOCKED_UNTIL = time.time() + 300.0
+                logger.warning("Google Translate rate-limited datacenter IP. Tripping circuit breaker for 5m.")
+                return None
         except Exception as e:
             logger.debug(f"Tier 1 (dict-chrome-ex) error: {e}")
 
@@ -246,6 +259,9 @@ async def _fetch_translation_remote(masked_text: str, target_code: str, source_l
                     result = "".join(s[0] for s in data[0] if s and isinstance(s, list) and s[0])
                     if result:
                         return result
+            elif resp.status_code == 429:
+                _CIRCUIT_BLOCKED_UNTIL = time.time() + 300.0
+                return None
         except Exception as e:
             logger.debug(f"Tier 2 (webapp) error: {e}")
 
@@ -263,6 +279,9 @@ async def _fetch_translation_remote(masked_text: str, target_code: str, source_l
                 translated = mm_data.get("responseData", {}).get("translatedText")
                 if translated and not translated.startswith("MYMEMORY WARNING"):
                     return translated
+            elif resp.status_code == 429:
+                _CIRCUIT_BLOCKED_UNTIL = time.time() + 180.0
+                return None
         except Exception as e:
             logger.debug(f"Tier 3 (MyMemory) error: {e}")
 
@@ -270,28 +289,21 @@ async def _fetch_translation_remote(masked_text: str, target_code: str, source_l
 
 def _fetch_translation_remote_sync(masked_text: str, target_code: str, source_lang: str = "auto") -> Optional[str]:
     """Synchronous fallback for CLI or tests."""
+    global _CIRCUIT_BLOCKED_UNTIL
+    import time
+    if time.time() < _CIRCUIT_BLOCKED_UNTIL:
+        return None
+
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, _fetch_translation_remote(masked_text, target_code, source_lang)).result(timeout=4.0)
+                return pool.submit(asyncio.run, _fetch_translation_remote(masked_text, target_code, source_lang)).result(timeout=2.0)
         else:
             return loop.run_until_complete(_fetch_translation_remote(masked_text, target_code, source_lang))
     except Exception:
-        # Direct urllib sync call as failsafe
-        try:
-            import urllib.request
-            import json
-            src = source_lang if source_lang != "auto" else "auto"
-            url = f"https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl={src}&tl={target_code}&dt=t&q=" + urllib.parse.quote(masked_text)
-            req = urllib.request.Request(url, headers=_HTTP_HEADERS)
-            with urllib.request.urlopen(req, timeout=3.0) as r:
-                data = json.loads(r.read().decode("utf-8"))
-                return "".join(s[0] for s in data[0] if s and isinstance(s, list) and s[0])
-        except Exception as e:
-            logger.debug(f"Sync translation failsafe error: {e}")
-            return None
+        return None
 
 async def translate_text_async(text: str, target_lang: str = "es", source_lang: str = "auto") -> str:
     """
@@ -427,9 +439,16 @@ async def translate_articles_batch_async(articles: List[Dict[str, Any]], target_
                 task_keys.append((idx, "bullet", b_idx))
                 tasks.append(sem_translate(b, "en"))
 
-    # Execute all translation tasks in parallel
+    # Execute all translation tasks in parallel with a strict 3.0s total timeout
     if tasks:
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=3.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Batch translation timed out (3.0s limit exceeded). Returning cached/original text immediately.")
+            results = []
     else:
         results = []
 
